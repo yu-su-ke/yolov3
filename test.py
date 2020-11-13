@@ -55,10 +55,10 @@ def test(cfg,
     # Configure run
     data = parse_data_cfg(data)
     nc = 1 if single_cls else int(data['classes'])  # number of classes
-    path = data['valid']  # path to test images
+    path = data['test']  # path to test images
     names = load_classes(data['names'])  # class names
     iouv = torch.linspace(0.5, 0.95, 10).to(device)  # iou vector for mAP@0.5:0.95
-    iouv = iouv[0].view(1)  # comment for mAP@0.5:0.95
+    # iouv = iouv[0].view(1)  # comment for mAP@0.5:0.95
     niou = iouv.numel()
 
     # Dataloader
@@ -75,7 +75,7 @@ def test(cfg,
     model.eval()
     _ = model(torch.zeros((1, 3, imgsz, imgsz), device=device)) if device.type != 'cpu' else None  # run once
     coco91class = coco80_to_coco91_class()
-    s = ('%20s' + '%10s' * 6) % ('Class', 'Images', 'Targets', 'P', 'R', 'mAP@0.5', 'F1')
+    s = ('%20s' + '%10s' * 7) % ('Class', 'Images', 'Targets', 'P', 'R', 'mAP@0.5', 'mAP@.5:.95', 'F1')
     p, r, f1, mp, mr, map, mf1, t0, t1 = 0., 0., 0., 0., 0., 0., 0., 0., 0.
     loss = torch.zeros(3, device=device)
     jdict, stats, ap, ap_class = [], [], [], []
@@ -176,21 +176,25 @@ def test(cfg,
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
     if len(stats):
         p, r, ap, f1, ap_class = ap_per_class(*stats)
-        if niou > 1:
-            p, r, ap, f1 = p[:, 0], r[:, 0], ap.mean(1), ap[:, 0]  # [P, R, AP@0.5:0.95, AP@0.5]
-        mp, mr, map, mf1 = p.mean(), r.mean(), ap.mean(), f1.mean()
+        # if niou > 1:
+            # p, r, ap, f1 = p[:, 0], r[:, 0], ap.mean(1), ap[:, 0]  # [P, R, AP@0.5:0.95, AP@0.5]
+        # mp, mr, map, mf1 = p.mean(), r.mean(), ap.mean(), f1.mean()
+        p, r, ap50, ap = p[:, 0], r[:, 0], ap[:, 0], ap.mean(1)  # [P, R, AP@0.5:0.95, AP@0.5]
+        mp, mr, map50, map, mf1 = p.mean(), r.mean(), ap50.mean(), ap.mean(), f1.mean()
         nt = np.bincount(stats[3].astype(np.int64), minlength=nc)  # number of targets per class
     else:
         nt = torch.zeros(1)
 
     # Print results
-    pf = '%20s' + '%10.3g' * 6  # print format
-    print(pf % ('all', seen, nt.sum(), mp, mr, map, mf1))
+    pf = '%20s' + '%10.3g' * 7  # print format
+    # print(pf % ('all', seen, nt.sum(), mp, mr, map, mf1))
+    print(pf % ('all', seen, nt.sum(), mp, mr, map50, map, mf1))
 
     # Print results per class
     if verbose and nc > 1 and len(stats):
         for i, c in enumerate(ap_class):
-            print(pf % (names[c], seen, nt[c], p[i], r[i], ap[i], f1[i]))
+            # print(pf % (names[c], seen, nt[c], p[i], r[i], ap[i], f1[i]))
+            print(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i], 0))
 
     # Print speeds
     if verbose or save_json:
@@ -234,7 +238,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp.cfg', help='*.cfg path')
     parser.add_argument('--data', type=str, default='data/coco2014.data', help='*.data path')
     parser.add_argument('--weights', type=str, default='weights/yolov3-spp-ultralytics.pt', help='weights path')
-    parser.add_argument('--batch-size', type=int, default=16, help='size of each image batch')
+    parser.add_argument('--batch-size', type=int, default=32, help='size of each image batch')
     parser.add_argument('--img-size', type=int, default=512, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.001, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.6, help='IOU threshold for NMS')
