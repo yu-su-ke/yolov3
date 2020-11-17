@@ -5,7 +5,7 @@ from utils.datasets import *
 from utils.utils import *
 
 from original_code.class_list import LabelList    # オリジナル
-class_list, label_type = LabelList.ALL.value
+class_list, label_type = LabelList.Product.value
 
 
 def detect(save_img=False):
@@ -136,7 +136,10 @@ def detect(save_img=False):
                         label = class_list[int(cls.item())]
                         with open(save_detect_result_path + '.txt', 'a') as f:
                             # f.write(('%g ' * 6 + '\n') % (label, conf, x1, y1, x2, y2 ))  # label format
-                            f.write('{} {} {} {} {} {}\n'.format(label, conf, x1, y1, x2, y2))
+                            if label_type in ['advertiser', 'product']:
+                                f.write('{} {} {} {} {} {}\n'.format(int(cls.item()), conf, x1, y1, x2, y2))
+                            else:
+                                f.write('{} {} {} {} {} {}\n'.format(label, conf, x1, y1, x2, y2))
 
                     if save_img or view_img:  # Add bbox to image
                         label = '%s %.2f' % (names[int(cls)], conf)
